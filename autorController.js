@@ -1,107 +1,78 @@
-// autorController.js
+const express = require("express");
+const router = express.Router();
+const pool = require("./db");
 
-const db = require('./db'); // Importa la conexión a la BD
+// LISTAR AUTORES
+router.get("/", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM autor ORDER BY id");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("🔥 ERROR EN BD:", error);
+    res.status(500).json({ mensaje: "Error al obtener autores", error: error.message });
+  }
+});
 
-// ----------------------
-// C - CREATE (Crear Autor)
-// ----------------------
-exports.crearAutor = async (req, res) => {
-    const { nombre, nacionalidad } = req.body;
-    
-    // Consulta SQL para insertar
-    const sql = 'INSERT INTO autor (nombre, nacionalidad) VALUES (?, ?)';
-    
-    try {
-        const [result] = await db.query(sql, [nombre, nacionalidad]);
-        res.status(201).json({ 
-            mensaje: 'Autor creado exitosamente', 
-            id: result.insertId,
-            autor: { nombre, nacionalidad }
-        });
-    } catch (error) {
-        console.error("Error al crear autor:", error);
-        res.status(500).json({ mensaje: 'Error interno del servidor al crear autor', error: error.message });
-    }
-};
+// CREAR AUTOR
+router.post("/", async (req, res) => {
+  const { nombre, nacionalidad } = req.body;
 
-// ----------------------
-// R - READ (Leer Autores)
-// ----------------------
-exports.obtenerAutores = async (req, res) => {
-    // Consulta SQL para seleccionar todos
-    const sql = 'SELECT id, nombre, nacionalidad, fecha_creacion FROM autor ORDER BY id DESC';
-    
-    try {
-        const [rows] = await db.query(sql);
-        res.status(200).json(rows); // Devuelve la lista de autores
-    } catch (error) {
-        console.error("Error al obtener autores:", error);
-        res.status(500).json({ mensaje: 'Error interno del servidor al obtener autores', error: error.message });
-    }
-};
+  try {
+    const query = `
+      INSERT INTO autor (nombre, nacionalidad)
+      VALUES ($1, $2)
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [nombre, nacionalidad]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("🔥 ERROR BD CREAR:", error);
+    res.status(500).json({ mensaje: "Error al crear autor", error: error.message });
+  }
+});
 
-// ----------------------
-// R - READ (Leer Autor por ID)
-// ----------------------
-exports.obtenerAutorPorId = async (req, res) => {
-    const { id } = req.params; // Captura el ID desde la URL
-    const sql = 'SELECT id, nombre, nacionalidad, fecha_creacion FROM autor WHERE id = ?';
-    
-    try {
-        const [rows] = await db.query(sql, [id]);
-        
-        if (rows.length === 0) {
-            return res.status(404).json({ mensaje: 'Autor no encontrado' });
-        }
-        
-        res.status(200).json(rows[0]); // Devuelve el primer (y único) registro
-    } catch (error) {
-        console.error("Error al obtener autor:", error);
-        res.status(500).json({ mensaje: 'Error interno del servidor al obtener autor', error: error.message });
-    }
-};
+// OBTENER UN AUTOR
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
 
-// ----------------------
-// U - UPDATE (Actualizar Autor)
-// ----------------------
-exports.actualizarAutor = async (req, res) => {
-    const { id } = req.params;
-    const { nombre, nacionalidad } = req.body;
-    
-    // Consulta SQL para actualizar. Solo actualiza nombre y nacionalidad.
-    const sql = 'UPDATE autor SET nombre = ?, nacionalidad = ? WHERE id = ?';
-    
-    try {
-        const [result] = await db.query(sql, [nombre, nacionalidad, id]);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ mensaje: 'Autor no encontrado para actualizar' });
-        }
-        
-        res.status(200).json({ mensaje: 'Autor actualizado exitosamente', id: id });
-    } catch (error) {
-        console.error("Error al actualizar autor:", error);
-        res.status(500).json({ mensaje: 'Error interno del servidor al actualizar autor', error: error.message });
-    }
-};
+  try {
+    const result = await pool.query("SELECT * FROM autor WHERE id = $1", [id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("🔥 ERROR BD:", error);
+    res.status(500).json({ mensaje: "Error al obtener autor", error: error.message });
+  }
+});
 
-// ----------------------
-// D - DELETE (Eliminar Autor)
-// ----------------------
-exports.eliminarAutor = async (req, res) => {
-    const { id } = req.params;
-    const sql = 'DELETE FROM autor WHERE id = ?';
-    
-    try {
-        const [result] = await db.query(sql, [id]);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ mensaje: 'Autor no encontrado para eliminar' });
-        }
-        
-        res.status(200).json({ mensaje: 'Autor eliminado exitosamente', id: id });
-    } catch (error) {
-        console.error("Error al eliminar autor:", error);
-        res.status(500).json({ mensaje: 'Error interno del servidor al eliminar autor', error: error.message });
-    }
-};
+// ACTUALIZAR AUTOR
+router.put("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { nombre, nacionalidad } = req.body;
+
+  try {
+    const query = `
+      UPDATE autor SET nombre = $1, nacionalidad = $2
+      WHERE id = $3 RETURNING *;
+    `;
+    const result = await pool.query(query, [nombre, nacionalidad, id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("🔥 ERROR BD:", error);
+    res.status(500).json({ mensaje: "Error al actualizar autor", error: error.message });
+  }
+});
+
+// ELIMINAR AUTOR
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await pool.query("DELETE FROM autor WHERE id = $1", [id]);
+    res.json({ mensaje: "Autor eliminado" });
+  } catch (error) {
+    console.error("🔥 ERROR BD:", error);
+    res.status(500).json({ mensaje: "Error al eliminar autor", error: error.message });
+  }
+});
+
+module.exports = router;
