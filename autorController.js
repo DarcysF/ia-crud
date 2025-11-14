@@ -31,7 +31,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// OBTENER UN AUTOR
+// OBTENER 1
 router.get("/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -44,7 +44,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ACTUALIZAR AUTOR
+// ACTUALIZAR
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { nombre, nacionalidad } = req.body;
@@ -62,7 +62,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// ELIMINAR AUTOR
+// ELIMINAR
 router.delete("/:id", async (req, res) => {
   const { id } = req.params;
 
